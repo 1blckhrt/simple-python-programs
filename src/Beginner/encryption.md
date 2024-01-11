@@ -6,8 +6,8 @@ This tool allows a person to encrypt or decrypt a message using a Caesar Cipher.
 
 - Required inputs
   - Message
-    - This is the message you would like to encrypt or decrypt. No spaces, special characters, or numbers are allowed.
+    - This is the message you would like to encrypt or decrypt. No special characters, or numbers are allowed. All spaces will be removed.
   - Key
-    - This is the key to encrypt or decrypt the message. A number between 1 and 26 is the only valid input.
+    - This is the key to encrypt or decrypt the message, sometimes known as the shift. A number between 1 and 26 is the only valid input.
   - Mode
     - This is how you select whether you would like to encrypt or decrypt the message. Valid inputs are "encrypt", "e", "decrypt", "d"
