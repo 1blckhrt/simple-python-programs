@@ -18,6 +18,10 @@ def caesarCipher():
     if not message or not key or not mode:
         print("Error: please enter a valid message, key, and mode! Returning to start...\n")
         return caesarCipher()
+    
+    elif not message.isalpha():
+        print("Error: please enter a message with only letters! Returning to start...\n")
+        return caesarCipher()
 
     elif key < 1 or key > 26:
         print("Error: please enter a number between 1 and 26! Returning to start...\n")
