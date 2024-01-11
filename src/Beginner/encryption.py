@@ -5,37 +5,29 @@
 
 def caesarCipher():
     message = input("Enter message: \n")
-    key = input("Enter key (A number between 1 and 26. Positive numbers will work for both encryption and decryption.): \n")
+    key = input("Enter key (A number between 1 and 26. Negative signs (-) are not necessary.): \n")
     try:
         key = int(key)
     except:
-        print("Error: please enter a key containing only numbers! No letters, special characters, or spaces are allowed! Returning to start...\n")
-        return caesarCipher()
+        raise ValueError("Please enter a valid number between 1 and 26! Returning to start...")
     mode = input("Enter mode (e/encrypt, d/decrypt): \n").lower()
 
     message = message.upper()
+    message = message.replace(" ", "")
 
-    if message == "" or key == "" or mode == "":
+    if not message or not key or not mode:
         print("Error: please enter a valid message, key, and mode! Returning to start...\n")
         return caesarCipher()
 
-    elif message.isalpha() == False:
-        print("Error: please enter a message containing only letters! No numbers, special characters, or spaces are allowed! Returning to start...\n")
-        return caesarCipher()
-
-    elif key < 1:
-        print("Error: please enter a number equal to or greater than 1! Returning to start...\n")
-        return caesarCipher()
-    
-    elif key > 26:
-        print("Error: please enter a number equal to or less than 26! Returning to start...\n")
+    elif key < 1 or key > 26:
+        print("Error: please enter a number between 1 and 26! Returning to start...\n")
         return caesarCipher()
     
     elif mode not in ['e', 'd', 'encrypt', 'decrypt']:
         print("Error: please enter either e, encrypt or d, decrypt as the mode! Returning to start...\n")
         return caesarCipher()
 
-    def encrypt():
+    def cipher():
         nonlocal message
         nonlocal key
         nonlocal mode
@@ -44,51 +36,28 @@ def caesarCipher():
         full = []
 
         for x in message:
-            if x == ' ':
-                message = message.replace(x, '')
-
             indexedLetter = letters.index(x)
-            encryptedLetter = (indexedLetter + key) % 26
-            empty.append(encryptedLetter)
 
-            newLetter = letters[encryptedLetter]
+            if mode in ['encrypt', 'e']:
+                messageLetter = (indexedLetter + key) % 26
+
+            else:
+                messageLetter = (indexedLetter - key) % 26
+                
+            empty.append(messageLetter)
+
+            newLetter = letters[messageLetter]
             full.append(newLetter)
 
-        encryptedMessage = "".join(full)
+        finalMessage = "".join(full)
 
-        print("\n")
-        print(f"Original message: {message}")
-        print(f"Encrypted message: {encryptedMessage}")
+        print(f"\nOriginal Message: {message}")
 
-    def decrypt():
-        nonlocal message
-        nonlocal key
-        nonlocal mode
-        letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
-        empty = []
-        full = []
+        if mode in ['encrypt', 'e']:
+            print(f"Encrypted Message: {finalMessage}")
 
-        for x in message:
-            if x == ' ':
-                message = message.replace(x, '')
-
-            indexedLetter = letters.index(x)
-            encryptedLetter = (indexedLetter - key) % 26
-            empty.append(encryptedLetter)
-
-            newLetter = letters[encryptedLetter]
-            full.append(newLetter)
-
-        encryptedMessage = "".join(full)
-
-        print("\n")
-        print(f"Original message: {message}")
-        print(f"Decrypted message: {encryptedMessage}")
-
-    if mode in ['encrypt', 'e']:
-        encrypt()
-
-    elif mode in ['decrypt', 'd']:
-        decrypt()
-
+        else:
+            print(f"Decrypted Message: {finalMessage}")
+        
+    cipher()
 caesarCipher()

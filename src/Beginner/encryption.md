@@ -1,6 +1,6 @@
 # Caesar Cipher Tool
 
-## Developed by 1blckhrt, contributions by Prits001
+## Developed by 1blckhrt, contributions by Prits001 and sdanialraza
 
 This tool allows a person to encrypt or decrypt a message using a Caesar Cipher.
 
