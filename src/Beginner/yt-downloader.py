@@ -2,6 +2,7 @@
 # This script will download the audio from a YouTube video and save it as an MP3 file.
 # The user is prompted to enter a YouTube video URL and select a folder to save the MP3 file to
 # The script will then download the audio and save it as an MP3 file in the selected folder
+# Note: This script requires the pytube library to be installed. You can install it using pip: pip install pytube
 
 import os
 import re

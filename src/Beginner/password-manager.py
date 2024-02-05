@@ -1,184 +1,217 @@
+### Password Manager ###
+# A simple password manager that allows you to store, view, and remove passwords for different services.
+# The program uses the Fernet symmetric encryption algorithm to encrypt and decrypt the passwords.
+# The master password is used to generate a key, which is then used to encrypt and decrypt the passwords.
+# The key and the encrypted master password are stored in a file called MASTER_DATA.key.
+# The passwords are stored in the same file, with the service name and the encrypted password separated by a colon.
+# Note: This program is for educational purposes only and should not be used for storing sensitive information.
+# Note: This program requires the cryptography library to be installed. You can install it using pip: pip install cryptography.
+
 import os
 import getpass
-import ast
 import sys
-from simplecrypt import encrypt, decrypt
-from Crypto.Random import get_random_bytes
-from Crypto.Protocol.KDF import scrypt
+from cryptography.fernet import Fernet
 
-master_password_set = False  # Flag to track whether the master password has been set
+def generate_key():
+    return Fernet.generate_key()
 
-def generate_key(master_password):
-    salt = get_random_bytes(16)
-    return scrypt(master_password, salt, 32, N=2**14, r=8, p=1)
+def save_key_and_password(key, encrypted_password):
+    with open("MASTER_DATA.key", "wb") as key_file:
+        key_file.write(key + b'\n' + encrypted_password)
 
-def save_key(key):
-    try:
-        with open("MASTER_KEY.key", "wb") as key_file:
-            key_file.write(key)
-    except Exception as e:
-        print("Error occurred while saving the key:", e)
-        sys.exit()
-
-def load_key():
-    try:
-        if os.path.exists("MASTER_KEY.key"):
-            with open("MASTER_KEY.key", "rb") as key_file:
-                return key_file.read()
-        else:
-            return None  # Return None if the key file is not found
-    except Exception as e:
-        print("Error occurred while loading the key:", e)
-        sys.exit()
+def load_key_and_password():
+    if os.path.exists("MASTER_DATA.key"):
+        with open("MASTER_DATA.key", "rb") as key_file:
+            lines = key_file.read().splitlines()
+            key = lines[0]
+            encrypted_password = b''.join(lines[1:])
+            return key, encrypted_password
+    else:
+        return None, None
 
 def encrypt_data(data, key):
-    return encrypt(key, data)
+    fernet = Fernet(key)
+    return fernet.encrypt(data.encode())
 
 def decrypt_data(encrypted_data, key):
-    return decrypt(key, encrypted_data)
+    fernet = Fernet(key)
+    return fernet.decrypt(encrypted_data).decode()
 
 def set_master():
-    global master_password_set
+    master_password = getpass.getpass("Please enter your master password: ")
+    if not master_password:
+        print("Master password cannot be empty.")
+        return
 
-    if load_key():
-        print("You already have a master password, if you want to change it please login and change it!")
-        sys.exit()
-    else:
-        master_password_input = getpass.getpass("Please enter your master password:")
+    key = generate_key()
+    encrypted_master_password = encrypt_data(master_password, key)
+    save_key_and_password(key, encrypted_master_password)
+    print("Your master password has been set. Exiting the program, please relaunch.")
+    sys.exit()
 
-        if not master_password_input:
-            print("Master password cannot be empty. Operation canceled.")
-            sys.exit()
+def authenticate():
+    while True:
+        master_password = getpass.getpass("Please enter your master password: ")
+        if not master_password:
+            print("Master password cannot be empty.")
+            continue
 
-        key = generate_key(master_password_input)
-        if key:
-            save_key(key)
-            print("Your master password has been set. Exiting the program, please relaunch.")
-            sys.exit()
+        key, encrypted_password = load_key_and_password()
+        if not key or not encrypted_password:
+            print("Master data not found. Please set a master password first.")
+            return False
+
+        decrypted_master_password = decrypt_data(encrypted_password, key)
+
+        if master_password == decrypted_master_password:
+            return True
         else:
-            print("Error generating the key.")
-            sys.exit()
+            print("Incorrect master password. Please try again.")
+            continue
 
-def load_decrypted():
-    if os.path.exists("passwords.txt"):
-        with open("passwords.txt", "rb") as file:
-            return file.read()
-    else:
-        return b""
+def add_password():
+    service = input("Enter the service name: ")
+    password = getpass.getpass("Enter the password: ")
+    key, _ = load_key_and_password()
+    if not key:
+        print("Master data not found. Please set a master password first.")
+        return
+
+    mode = "a" if os.path.exists("MASTER_DATA.key") else "w"
+
+    with open("MASTER_DATA.key", mode) as file:
+        if mode == "a":
+            file.write("\n\n")
+        encrypted_password = encrypt_data(password, key)
+        file.write(f"{service}:{encrypted_password.decode()}\n")
+
+    print("Password added successfully.")
+
+def view_passwords():
+    key, _ = load_key_and_password()
+    if not key:
+        print("Master data not found. Please set a master password first.")
+        return
+
+    with open("MASTER_DATA.key", "r") as file:
+        lines = file.readlines()
+
+    if not lines:
+        print("No passwords found.")
+        return
+
+    print("\nYour Passwords:")
+    for line in lines:
+        if ":" not in line:
+            continue
+
+        service, encrypted_password = line.strip().split(":", 1)
+        decrypted_password = decrypt_data(encrypted_password.encode(), key)
+        print(f"{service}: {decrypted_password}")
+
+def remove_password():
+    key, _ = load_key_and_password()
+    if not key:
+        print("Master data not found. Please set a master password first.")
+        return
+
+    with open("MASTER_DATA.key", "r") as file:
+        lines = file.readlines()
+
+    if not lines:
+        print("No passwords found.")
+        return
+
+    print("\nExisting Passwords:")
+    service_names = []
+    for line in lines:
+        line = line.strip()
+        if ":" not in line:
+            continue
+
+        service, _ = line.split(":", 1)
+        service_names.append(service.lower())
+        print(service)
+
+    service_to_remove = input("Enter the name of the service you want to remove the password for: ").lower()
+
+    if service_to_remove not in service_names:
+        print("Service not found.")
+        return
+
+    updated_lines = [line for line in lines if not line.lower().startswith(service_to_remove + ":")]
+
+    with open("MASTER_DATA.key", "w") as file:
+        file.writelines(updated_lines)
+
+    print("Password removed successfully.")
 
 def change_master_password():
-    global master_password_set
+    while True:
+        old_master_password = getpass.getpass("Enter your current master password: ")
+        if not old_master_password:
+            print("Master password cannot be empty.")
+            continue
 
-    master_password_input = getpass.getpass("Enter your current master password: ")
+        key, encrypted_password = load_key_and_password()
+        if not key or not encrypted_password:
+            print("Master data not found. Please set a master password first.")
+            return False
 
-    key = load_key()
+        decrypted_master_password = decrypt_data(encrypted_password, key)
 
-    if key is None:
-        print("No master key found. Please create a new one.")
-        return
+        if old_master_password == decrypted_master_password:
+            new_master_password = getpass.getpass("Set your new master password: ")
+            if not new_master_password:
+                print("New master password cannot be empty.")
+                continue
 
-    if master_password_input == decrypt_data(load_decrypted(), key):
-        new_master_password = getpass.getpass("Set your new master password: ")
-
-        new_key = generate_key(new_master_password)
-
-        if new_key:
-            try:
-                # Delete the old key
-                os.remove("MASTER_KEY.key")
-                
-                # Save the new key
-                save_key(new_key)
-                
-                print("Your master password has been updated.")
-                
-                # Update the global master_password_set flag
-                master_password_set = True  
-            except Exception as e:
-                print("Error occurred while updating the key:", e)
-                sys.exit()
+            new_key = generate_key()
+            encrypted_new_master_password = encrypt_data(new_master_password, new_key)
+            save_key_and_password(new_key, encrypted_new_master_password)
+            print("Your master password has been updated.")
+            break
         else:
-            print("Error generating the key.")
-            sys.exit()
-    else: 
-        print("Incorrect password!")
-        return
-
-def save_encrypted(data):
-    with open("passwords.txt", "wb") as file:
-        file.write(data)
-
-def add_password(passwords, service, password):
-    passwords[service] = password
+            print("Incorrect master password. Please try again.")
+            continue
 
 def main():
-    global master_password_set
-
-    passwords = {}
-    key = load_key()
-
-    if key is None:
+    print("Welcome to Password Manager!")
+    if not os.path.exists("MASTER_DATA.key"):
+        print("It seems like this is your first time running the program.")
         set_master()
 
-    elif not master_password_set:
-        has_password = input("Do you have a master password? (yes/y, no/n)").lower()
-
-        if has_password == "yes" or has_password == "y":
-            master_password = getpass.getpass("Enter your master password: ")
-
-            # Verify if the entered master password is correct
-            decrypted_password = decrypt_data(load_decrypted(), key)
-            print("Decrypted password:", decrypted_password)
-            print("Entered master password:", master_password)
-            if master_password != decrypted_password:
-                raise ValueError("Incorrect master password!")
-
-
-        elif has_password == "no" or has_password == "n":
-            set_master()
-
-        else: 
-            print("Not a valid input!")
-            sys.exit()
-        master_password_set = True
+    authenticated = False
 
     while True:
+        if not authenticated:
+            if not authenticate():
+                continue
+            else:
+                authenticated = True
 
-        print("\nPassword Manager Actions:")
-        print("1. Add password")
-        print("2. View passwords")
-        print("3. Change master password")
-        print("4. Exit")
-
-        choice = input("What would you like to do? ")
+        print("\nMenu:")
+        print("1. Change Master Password")
+        print("2. Add Password")
+        print("3: Remove Password")
+        print("4. View Passwords")
+        print("5. Logout and Exit")
+        
+        choice = input("Enter your choice: ")
 
         if choice == "1":
-            service = input("Enter the service name: ")
-            password = getpass.getpass("Enter the password: ")
-            add_password(passwords, service, password)
-            encrypted_passwords = encrypt_data(str(passwords), key)
-            save_encrypted(encrypted_passwords)
-            print("\nPassword added successfully.")
-
-        elif choice == "2":
-            decrypted_data = decrypt_data(load_decrypted(), key)
-            if decrypted_data:
-                stored_passwords = ast.literal_eval(decrypted_data)
-                if len(stored_passwords) == 1 and "master_password" in stored_passwords:
-                    print("\nNo passwords stored yet other than the master password.")
-                else:
-                    print("Stored Passwords:")
-                    for service, password in stored_passwords.items():
-                        print(f"\nService: {service}, Password: {password}")
-            else:
-                print("\nNo passwords stored yet.")
-
-        elif choice == "3":
             change_master_password()
-
+        elif choice == "2":
+            add_password()
+        elif choice == "3":
+            remove_password()
         elif choice == "4":
-            print("Exiting...")
-
+            view_passwords()
+        elif choice == "5":
+            print("Goodbye!")
+            break
+        else:
+            print("Invalid choice. Please try again.")
 
 if __name__ == "__main__":
     main()
