@@ -1,5 +1,5 @@
 import sys
-import time
+
 def start_bar(
     current: int,
     total: int,
@@ -8,6 +8,9 @@ def start_bar(
     empty_char: str,
     last_progress: float = -1
 ): 
+    """
+    Displays a progress bar in the console.
+    """
     if current > total:
         current = total
     if current < 0:
